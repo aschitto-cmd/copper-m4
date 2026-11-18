@@ -40,6 +40,15 @@ const MAX_STEPS = 5;
 
 const SORRY = "Sorry, something went wrong on my end. Please try again.";
 
+/** When Google says the free-tier quota is used up (per minute or per day). */
+const BUSY =
+  "Sorry, I've hit my limit of AI answers for now, so I can't reply. Please try again later.";
+
+function isQuotaError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /quota|rate.?limit|RESOURCE_EXHAUSTED|429/i.test(message);
+}
+
 type Agent = {
   info: CallInfo;
   instructions: string;
@@ -179,9 +188,15 @@ export async function askCopper({
       }
       progress.status = "done";
       if (!progress.reply.trim()) progress.reply = SORRY;
-    } catch {
+    } catch (error) {
+      // The customer sees a short apology; the reason goes to the server log.
+      console.error(
+        "[ask-copper] answer failed:",
+        error instanceof Error ? error.message : String(error),
+      );
       progress.status = "error";
-      if (!progress.reply.trim()) progress.reply = SORRY;
+      if (!progress.reply.trim())
+        progress.reply = isQuotaError(error) ? BUSY : SORRY;
     }
     done(snapshot());
   })();
