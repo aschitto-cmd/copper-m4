@@ -527,11 +527,15 @@ function Station({
   );
 }
 
-/** A reply with each [Title, p. N] citation linked to that page of the PDF. */
+/**
+ * A reply with each [Title, p. N] citation linked to that page of the PDF,
+ * **bold** and `code` drawn as such, and "* " list markers shown as bullets.
+ */
 function CitedText({ text }: { text: string }) {
-  return splitCitations(text).map((part, i) =>
+  const tidy = text.replace(/^[ \t]*[*-][ \t]+/gm, "• ");
+  return splitCitations(tidy).map((part, i) =>
     typeof part === "string" ? (
-      part
+      <InlineMarkdown key={i} text={part} />
     ) : (
       <a
         key={i}
