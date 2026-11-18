@@ -270,4 +270,10 @@ export const copperTools = {
     }),
     execute: async ({ query }) => searchDocs(query),
   }),
+  transfer_refund: tool({
+    description:
+      "Hands the chat to the Refund agent when the customer wants a refund or their money back for an order. Not for questions about the refund policy.",
+    inputSchema: z.object({}),
+    execute: async () => ({ transferredTo: "Refund agent" }),
+  }),
 };

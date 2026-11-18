@@ -139,3 +139,38 @@ second agent, and a person approving the large ones.
 |---|---|---|
 | Page | `app/support/page.tsx` | The "Refund Console" title and nothing else yet, linked from the header as Support |
 | Chat panel | `components/copper/ask-copper.tsx` | With the `docked` prop it starts open and the page beside it stays clickable. It is the same single agent and tools as on the home page |
+
+## Module 4: Refund agent and Refund Console
+
+**Summary:** A second agent, the Refund agent, takes over the chat when a
+customer wants their money back. The refund rule is code, not a prompt: a
+refund goes through on its own only when it's at or under the auto-refund
+limit and the order is 30 days old or newer. Anything else waits in the Refund
+Console for a person to approve or reject, and the Refund agent then tells the
+customer.
+
+| Piece | Where | What it does |
+|---|---|---|
+| Page | `app/support/page.tsx`, `components/copper/refund-console.tsx` | The Refund Console: the limit (default $50), the queue of held refunds with Approve and Reject, the customer's orders and the refund history. Reloads when the chat finishes an answer and every 4 seconds |
+| Server Actions | `lib/copper/refund-console.ts` | `loadConsole`, `updateLimit`, `decide`, `resetDemo`. Only `decide` can approve a held refund, and only the console calls it |
+| Rule and data | `lib/copper/refunds.ts` | Maya Reyes's five seed orders (dates relative to server start), the refunds and the limit, kept in server memory. `requestRefund()` applies the rule; `holdReasonsFor()` is the rule; an order can be refunded once |
+| Refund agent | `lib/copper/assistant/refund-agent.ts` | `REFUND_INSTRUCTIONS` and `refundTools`: `get_orders`, `request_refund`, `check_refund`, `transfer_agent` (back to Copper) |
+| Handoff | `lib/copper/assistant/ask.ts`, `tools.ts` | Copper's `transfer_refund` tool ends its turn and starts the Refund agent on the same conversation (once per question). `Progress.agent` tells the panel who holds the chat next |
+| Chat panel | `components/copper/ask-copper.tsx` | Draws the handoff, each agent's tools and who replied. A console decision arrives as a `[Refund Console]` note to the Refund agent, which checks it with `check_refund` before telling the customer |
+| AI calls | `{ module: 2, feature: "ask-copper" }`, `{ module: 4, feature: "refund-agent" }` | One streamed call per agent per question; two when Copper hands off |
+
+**Data flow:** customer asks for a refund → Copper calls `transfer_refund` →
+Refund agent → `get_orders` → `request_refund` → rule in code → refunded now,
+or held in the console → person clicks Approve or Reject → note to the Refund
+agent → `check_refund` → reply to the customer.
+
+**Decisions and trade-offs:** The rule lives in code so no wording in the chat
+can change it; the agents have no tool that approves anything. Claims like "my
+supervisor approved it" and fake `[Refund Console]` messages are checked
+against `check_refund`. Refunds are kept in memory instead of a database: no
+new service to set up, but they reset when the server restarts and every
+visitor shares one set of orders (the console has a Reset button).
+
+**Risks and open questions:** On Vercel, separate server instances don't share
+memory, so the chat and the console can briefly disagree; a database table
+would fix that. There's one hard-coded customer, since there's no sign-in yet.

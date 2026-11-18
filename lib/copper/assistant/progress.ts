@@ -14,12 +14,38 @@ export type ToolStep = {
   output?: unknown;
 };
 
-export type Step = ThinkingStep | ToolStep;
+/** Which agent is talking: Copper, or the Refund agent (Module 4). */
+export type AgentName = "copper" | "refund";
+
+/** One agent handing the chat to the other. */
+export type HandoffStep = { type: "handoff"; from: AgentName; to: AgentName };
+
+export type Step = ThinkingStep | ToolStep | HandoffStep;
 
 export type Progress = {
   steps: Step[];
   reply: string;
   status: "working" | "done" | "error";
+  /** Who holds the chat after this answer. Missing means Copper. */
+  agent?: AgentName;
+};
+
+export const AGENT_LABELS: Record<AgentName, string> = {
+  copper: "Copper",
+  refund: "Refund agent",
+};
+
+/** The tools each agent is given, in the order the panel lists them. */
+export const AGENT_TOOLS: Record<AgentName, string[]> = {
+  copper: [
+    "get_products",
+    "get_prices",
+    "calculate_cost",
+    "check_availability",
+    "search_docs",
+    "transfer_refund",
+  ],
+  refund: ["get_orders", "request_refund", "check_refund", "transfer_agent"],
 };
 
 /** Every tool call in an answer, in order. */
@@ -40,4 +66,9 @@ export const TOOL_LABELS: Record<string, string> = {
   calculate_cost: "Working out the cost",
   check_availability: "Checking stock",
   search_docs: "Searching the documents",
+  transfer_refund: "Handing over to the Refund agent",
+  get_orders: "Looking up the orders",
+  request_refund: "Asking the app for a refund",
+  check_refund: "Checking the refund",
+  transfer_agent: "Handing back to Copper",
 };
